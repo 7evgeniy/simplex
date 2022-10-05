@@ -4,50 +4,31 @@ import sympy as sp
 
 sp.init_printing()
 
-# составить симплексную таблицу на основе ограничений:
-def make(columnList):
-	cols = len(columnList)
-	rows = len(columnList[0])
-	for i in range(1, cols):
-		if len(columnList[i]) != rows:
-			return None
-	matrix = sp.Matrix(rows, cols-1, lambda i, j: columnList[j][i])
-	matrix = matrix.row_join(sp.Matrix([[0 for i in range(rows-1)], sp.eye(rows-1)]))
-	matrix = matrix.row_join(sp.Matrix(columnList[cols-1]))
-	return matrix
-
 # Смысл используемых переменных:
 # matrix : тип sp.Matrix + следующие атрибуты:
 #     .free : число: столбец, который должен войти в базис;
 #     .nonfree : число: столбец, который должен выйти из базиса.
 # freeList : список чисел: столбцы, входящие в базис.
 
-# выйдет из базиса: → matrix.nonfree
+# войдёт в базис (столбец); а пока — вне базиса: → matrix.nonfree
 def compute_nonfree(matrix, freeList):
 	minimum = 0
-	for j in freeList:
-		if matrix[0, j] < minimum:
+	for j in range(1, matrix.cols):
+		if not (j in freeList) and matrix[0, j] < minimum:
 			matrix.nonfree = j
 			minimum = matrix[0, j]
 	return True if minimum else False
 
-# войдёт в базис: ⇒ matrix.free
-def compute_free(matrix, freeList):
+# выйдет из базиса (строка); а пока — в базисе: ⇒ matrix.free
+def compute_free(matrix):
 	upd = False
-	last = matrix.cols - 1
 	for i in range(1, matrix.rows):
 		if matrix[i, matrix.nonfree] > 0:
-			if (not upd) or matrix[i, last] / matrix[i, matrix.nonfree] < minimum:
-				minimum = matrix[i, last] / matrix[i, matrix.nonfree]
+			if (not upd) or matrix[i, 0] / matrix[i, matrix.nonfree] < minimum:
+				minimum = matrix[i, 0] / matrix[i, matrix.nonfree]
 				matrix.free = i
 				upd = True
 	return upd
-
-def recompute_freeList(matrix, freeList):
-	for j in range(matrix.cols-1):
-		if j not in freeList and matrix[matrix.free, j] == 1:
-			break     # разыскать новый базисный столбец в матрице → j
-	return [i if i != matrix.nonfree else j for i in freeList]
 
 def update_matrix(matrix, free, nonfree):
 	coef = matrix[free, nonfree]
@@ -58,14 +39,26 @@ def update_matrix(matrix, free, nonfree):
 			coef = matrix[i, nonfree]
 			for j in range(matrix.cols):
 				matrix[i, j] -= coef * matrix[free, j]
+	print("out: {}, in: {}".format(free, nonfree))
 	sp.pprint(matrix); print(); print()
+
+# вычислить номер базисного столбца по номеру базисной строки после
 
 def simplex(matrix, freeList):
 	sp.pprint(matrix); print(); print()
 	while True:
-		if not compute_nonfree(matrix, freeList):
+		if not compute_nonfree(matrix, freeList):  # в базис войдёт (столбец)
 			return True
-		if not compute_free(matrix, freeList):
+		if not compute_free(matrix):               # из базиса выйдет (строка)
 			return False
-		freeList = recompute_freeList(matrix, freeList)
+		freeList[matrix.free-1] = matrix.nonfree
 		update_matrix(matrix, matrix.free, matrix.nonfree)
+
+def solve(rowList, height, width):
+	m = sp.zeros(height, width + height - 1)
+	for i in range(len(rowList)):
+		for j in range(len(rowList[i])):
+			m[i, j] = rowList[i][j]
+		if i > 0:
+			m[i, width+i-1] = 1
+	return simplex(m, list(range(width, width+height-1)))
