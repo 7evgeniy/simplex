@@ -42,15 +42,16 @@ def update_matrix(matrix, free, nonfree):
 	print("out: {}, in: {}".format(free, nonfree))
 	sp.pprint(matrix); print(); print()
 
-# вычислить номер базисного столбца по номеру базисной строки после
-
+# симплекс-метод расписан в этой процедуре.
+# на входе — симплексная таблица и список базисных столбцов
+# на выходе — симплексная таблица по результатам преобразований
 def simplex(matrix, freeList):
 	sp.pprint(matrix); print(); print()
 	while True:
 		if not compute_nonfree(matrix, freeList):  # в базис войдёт (столбец)
-			return True
+			return matrix
 		if not compute_free(matrix):               # из базиса выйдет (строка)
-			return False
+			return None
 		freeList[matrix.free-1] = matrix.nonfree
 		update_matrix(matrix, matrix.free, matrix.nonfree)
 
